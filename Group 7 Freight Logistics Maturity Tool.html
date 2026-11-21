@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<!--
+=====================================================================================
+README — Freight & Logistics Digital Maturity Assessment (Group 7)
+ISM 6346 — Digital Business Transformation Foundations · Maturity Self-Assessment Tool
+Team:  John Archavlis, Member A (Framework Designer)
+       Abirami Anantharamakrishnan, Member B (Question Author)
+       Rob Katz, Member C (Tool Builder)
+Run:   open this file in Chrome or Firefox (internet needed for Chart.js from jsDelivr).
+Data:  questions live in `dimensions`; profiles and thresholds live in `PROFILES` and
+       `SETTINGS`. Edit those data structures, not the HTML.
+Scoring: dimension score = unrounded mean of its three answers (1-5). The two lowest
+       dimensions are found by sorting scores; ties are ordered by TIE_PRIORITY.
+       The first matching rule in PROFILE_RULES selects the profile.
+Privacy: no server, cookies, or browser storage.
+AI tools: AI coding assistants (Claude, Anthropic; and others used by the team) helped
+       scaffold and revise this code; the team reviewed and tested it.
+=====================================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Freight & Logistics | Digital Maturity Assessment</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js"></script>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#182638;background:#f3f6fa}*{box-sizing:border-box}body{margin:0}.wrap{max-width:960px;margin:auto;padding:30px 18px 70px}header{background:#142b48;color:white;padding:35px 0}header .wrap{padding-top:0;padding-bottom:0}h1{font-size:clamp(1.5rem,4vw,2.25rem);margin:6px 0}h2{font-size:1.25rem;margin:0 0 10px}p{line-height:1.55}.sub{color:#d4e1f2}.tag{font-size:.8rem;text-transform:uppercase;letter-spacing:.09em;color:#8ec8f8;font-weight:700}.notice{background:#fff8e7;border-left:4px solid #d89b21;padding:13px 16px;border-radius:6px;margin:20px 0}.panel{background:white;border:1px solid #dce4ed;border-radius:12px;padding:22px;margin:18px 0;box-shadow:0 2px 9px #142b4809}.dimension-head{display:flex;justify-content:space-between;gap:15px;align-items:center}.dim-count{font-size:.85rem;color:#64748b}.desc{color:#52647a;margin-top:0}.question{padding:16px 0;border-top:1px solid #e5ebf2}.question legend{font-weight:650;line-height:1.4;padding:0;margin-bottom:10px}.question fieldset{border:0;padding:0;margin:0;min-width:0}.choice{display:block;border:1px solid #dce4ed;border-radius:7px;padding:10px 12px;margin:7px 0;cursor:pointer;line-height:1.4}.choice:hover{background:#f4f8fc}.choice:has(input:checked){background:#eaf3ff;border-color:#387dc3}.choice input{margin-right:9px;accent-color:#205c9b}button{background:#205c9b;color:white;border:0;border-radius:8px;padding:13px 22px;font-size:1rem;font-weight:700;cursor:pointer}button:hover{background:#174775}button.secondary{background:#e9eff6;color:#18334e}button.secondary:hover{background:#d8e5f2}.actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.error{color:#b42318;font-weight:650;margin:12px 0}.score-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.score{padding:13px;border-radius:8px;background:#f0f5fa}.score strong{display:block;margin-bottom:6px}.score b{font-size:1.3rem}.chart-container{max-width:600px;margin:12px auto}.result-note{background:#eaf3ff;border-left:4px solid #205c9b;padding:14px 16px;border-radius:6px}.small{font-size:.85rem;color:#52647a}footer{color:#52647a;font-size:.85rem;margin-top:30px}#results[hidden]{display:none}@media(max-width:600px){.panel{padding:15px}.wrap{padding-left:12px;padding-right:12px}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><div class="tag">ISM 6346 • Group 7 • Regional &amp; mid-size freight carriers</div><h1>Freight & Logistics Digital Maturity Assessment</h1><p class="sub">Evaluate five capabilities, view your maturity radar chart, and identify strategic priorities.</p></div></header>
+<main class="wrap">
+<section class="panel"><h2>Before you begin</h2><p>Identify the business unit, services, locations, and workflows being assessed. Keep the same scope for all 15 questions. Base answers on the most recently completed quarter (or the latest documented review for less frequent activities). Choose the highest level fully supported by evidence; planned improvements do not count. If unsure, verify with the responsible person. Evaluate equivalent freight workflows where examples do not apply. All questions require an answer.</p><p class="small">Scores are directional self-assessment indicators, not a company-wide certification; the instrument has not been formally validated.</p></section>
+<p>Answer all questions using the description that best reflects the organization's <strong>current, observable practices</strong>. Each answer maps to a maturity level from 1 to 5; levels are revealed only in your results.</p>
+<form id="assessment" novalidate><div id="questions"></div><div class="panel"><div class="actions"><button type="submit">Calculate maturity scores</button><button type="button" class="secondary" id="clearBtn">Clear responses</button></div><div id="error" class="error" role="alert" aria-live="polite"></div></div></form>
+<section id="results" class="panel" hidden aria-live="polite"><h2>Your maturity assessment</h2><p class="small">Each dimension score is the unrounded arithmetic mean of its three question responses (1–5); display values are rounded to two decimals.</p><div id="score-grid" class="score-grid"></div><div class="chart-container"><canvas id="radar" role="img" aria-label="Radar chart of five digital maturity dimensions"></canvas></div><h2>Strategic interpretation</h2><div id="interpretation" class="result-note"></div><p class="small">These results are directional self-assessment indicators, not a certification that every criterion of a maturity stage has been achieved.</p></section>
+<footer>Freight & Logistics Maturity Self-Assessment • Group 7: John Archavlis, Abirami Anantharamakrishnan, Rob Katz • No responses are transmitted to a server or saved in browser storage. Chart.js is loaded from a CDN and requires internet access.</footer>
+</main>
+<script>
+'use strict';
+// Member B's 15 questions and answer options (Questions & Rationale document, Nov 18).
+const dimensions=[
+  {
+    "id": "sdi",
+    "name": "Shipment Data Infrastructure",
+    "description": "Trusted shipment records across systems and partners.",
+    "questions": [
+      {
+        "id": "SDI-01",
+        "text": "How are records for the same shipment connected across different systems like order entry, transport, warehousing where applicable, and billing?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "Staff re-enter shipment details in separate files or systems; no shared identifier or maintained cross-reference connects the records."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Some systems exchange shipment details, but identifiers or conflicting records still require manual reconciliation."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "A common shipment identifier and standardized customer, location, and carrier records connect all applicable core systems under documented standards."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 controls are in place, and near-real-time integration failures and record mismatches are measured, assigned to owners, and reviewed quarterly."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 controls are in place, and automated validation stops or routes inconsistent records back to their source before downstream use; recurring causes drive preventive fixes."
+          }
+        ],
+        "evidence": "Shipment samples, identifier mappings, master-data standards, interface logs."
+      },
+      {
+        "id": "SDI-02",
+        "text": "How are missing, conflicting, or inaccurate shipment data detected and corrected?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "Errors are discovered through complaints or individual checks, without a documented correction process."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Individual teams check selected files or reports and correct errors locally using their own procedures."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "Company-wide validation rules and named owners govern shipment-data checks and corrections across applicable systems."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 controls are in place, and completeness, timestamp consistency, duplicate records, and correction times are measured and reviewed quarterly."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 controls are in place, and checks run as data arrive; rejected records return to the source before billing or customer display, with prevention rules updated from recurring errors."
+          }
+        ],
+        "evidence": "Validation rules, quality dashboards, correction records, assigned owners."
+      },
+      {
+        "id": "SDI-03",
+        "text": "How are new shipment-data sources or trading partners integrated?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "New data are copied manually from emails, spreadsheets, or paper into operational systems."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Individual teams create one-off interfaces or EDI connections without a company-wide onboarding standard."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "New connections follow documented interface and master-data standards, with validation required before release."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 process is in place, and connection reliability, update latency, and onboarding time are measured and reviewed with named owners."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 process is in place, and reusable interfaces and automated validation enable routine connections to go live within five business days after agreed prerequisites are complete."
+          }
+        ],
+        "evidence": "Onboarding checklists, interface specifications, test results, dated implementation records."
+      }
+    ]
+  },
+  {
+    "id": "scc",
+    "name": "Shipper & Carrier Channels",
+    "description": "Digital quoting, booking, tracking, and partner interaction.",
+    "questions": [
+      {
+        "id": "SCC-01",
+        "text": "How do customers obtain rate quotes, book shipments, and retrieve proof of delivery and invoices?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "Customers call or email; staff prepare quotes and bookings manually and retrieve paper documents on request."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Selected customers use a portal or EDI for some transactions; others require staff assistance or separate document requests."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "All customers can access quoting, booking, tracking, proof of delivery, and invoices through a standard portal or API showing consistent information."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 service is in place, and completion rates, response times, and channel failures are reviewed monthly with corrective actions."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 service is in place, and customer-tested channel improvements are evaluated against a baseline before wider release."
+          }
+        ],
+        "evidence": "Portal/API demonstrations, transaction logs, channel reports, customer test records."
+      },
+      {
+        "id": "SCC-02",
+        "text": "What shipment-status and disruption support do customers receive digitally?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "Customers contact staff for status; staff locate the information and respond manually."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Customers see batch-updated milestones such as pickup and delivery, but must contact staff for current arrival estimates."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "Customers access consistent tracking events and delivery estimates through the standard portal or API."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 service is in place, with GPS-based arrival estimates and automatic delay alerts; alert timeliness and usefulness are reviewed monthly."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 service is in place, and customers receive actionable alternatives based on live network conditions; acceptance and shipment outcomes inform service improvements."
+          }
+        ],
+        "evidence": "Tracking screens, GPS event logs, alert reports, alternative-service acceptance records."
+      },
+      {
+        "id": "SCC-03",
+        "text": "How are shippers and carrier partners connected to digital transaction channels?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "Bookings, tenders, and status requests are exchanged manually by phone or email."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Large partners have individually arranged portal or EDI access; other partners use manual exchanges."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "Partners follow one documented portal, EDI, or API onboarding process with standard transaction tests."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 process is in place, and onboarding time, transaction success, and partner support issues are reviewed monthly."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 process is in place, and published API documentation, self-service testing, and automated checks allow routine partners to connect within five business days after agreed prerequisites are complete."
+          }
+        ],
+        "evidence": "Partner onboarding instructions, API documentation, test logs, connection timestamps."
+      }
+    ]
+  },
+  {
+    "id": "foa",
+    "name": "Freight Operations Automation",
+    "description": "Automation of planning, dispatch, tendering, and invoicing.",
+    "questions": [
+      {
+        "id": "FOA-01",
+        "text": "How consistently are freight planning, dispatch, tendering, and invoicing workflows automated?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "Applicable workflows depend on spreadsheets, calls, and manual entry beyond basic system functions."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Individual sites automate selected tasks with locally maintained rules or scripts."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "Documented, centrally managed automation with named owners operates across all assessed sites for agreed core workflows."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 automation is in place, and completion rates and manual interventions are measured by site and reviewed monthly."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 controls are in place, and more than half of shipments complete applicable digital booking-to-invoice workflows without staff re-entry; people resolve exceptions."
+          }
+        ],
+        "evidence": "Process maps, automation inventory, site coverage records, workflow completion logs."
+      },
+      {
+        "id": "FOA-02",
+        "text": "How are manual interventions in automated freight workflows managed?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "Staff resolve failed transactions individually without keeping an intervention log."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Some sites keep local exception lists, but categories and ownership differ."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "A standard exception process defines categories, responsible teams, and escalation steps across assessed sites."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 process is in place, and interventions are logged by cause and site; teams review volumes and resolution times monthly."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 process is in place, and teams fix or automate leading causes each quarter and verify reductions in repeat interventions."
+          }
+        ],
+        "evidence": "Exception registers, cause categories, review minutes, verified improvement records."
+      },
+      {
+        "id": "FOA-03",
+        "text": "How are changes to freight-workflow automation introduced across sites?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "Individuals change local workflows without a documented approval or testing process."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Local teams test selected scripts or rules, but methods and support depend on their creators."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "Company-wide procedures define testing, approval, documentation, ownership, and release of automation changes."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 process is in place, and releases are assessed against baseline error, handling-time, or completion-rate measures."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 process is in place, and successful terminal pilots follow a repeatable network rollout with outcome checks and rollback criteria."
+          }
+        ],
+        "evidence": "Change approvals, baseline measures, pilot outcomes, rollout and rollback records."
+      }
+    ]
+  },
+  {
+    "id": "aim",
+    "name": "AI/ML Deployment",
+    "description": "Production use and oversight of predictive or decision models.",
+    "questions": [
+      {
+        "id": "AIM-01",
+        "text": "How are predictive or routing optimization models used in daily freight decisions?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "No predictive or optimization models support freight decisions; planners rely on experience or retrospective spreadsheets."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Analysts manually run one-off models and distribute reports; models are not embedded in daily operational workflows."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "At least one owned, approved production model provides outputs used daily, such as delivery estimates or lane-volume forecasts."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 capability is in place, and model accuracy is tracked against targets; model-assisted routing or pricing is available at major assessed locations."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 capability is in place, and governed AI agents execute routine decisions across applicable shipment stages, while staff handle escalations and retain override authority."
+          }
+        ],
+        "evidence": "Production model inventory, usage records, decision logs, human escalation records."
+      },
+      {
+        "id": "AIM-02",
+        "text": "How is the performance of freight models evaluated after deployment?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "There are no operational models or model-evaluation records."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Analysts check selected model outputs manually without production targets or a recurring review process."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "Production models have named owners, documented evaluation measures, and an approved review process."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 controls are in place, and errors such as ETA deviation or lane-forecast error are tracked against thresholds that trigger investigation and retraining."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 controls are in place, and retrained models and agent changes must pass repeatable quality checks before release; ongoing monitoring and rollback controls protect operational decisions."
+          }
+        ],
+        "evidence": "Evaluation datasets, accuracy reports, alerts, retraining approvals, release and rollback logs."
+      },
+      {
+        "id": "AIM-03",
+        "text": "How are freight models and operational scenarios developed, approved, and improved?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "Freight planning does not use models or model-based scenario analysis."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Individuals create standalone forecast or scenario studies, without a shared approval or deployment process."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "Models follow documented build, approval, and deployment procedures with assigned owners."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 process is in place, and model changes are compared against current performance targets before operational adoption."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 process is in place, and a digital twin tests changes such as terminal locations or network flows; predictions are compared with observed outcomes to refine models."
+          }
+        ],
+        "evidence": "Model lifecycle procedures, scenario reports, digital-twin tests, predicted-versus-actual outcomes."
+      }
+    ]
+  },
+  {
+    "id": "occ",
+    "name": "Organizational Change Capacity",
+    "description": "Digital strategy, leadership accountability, adoption, and training.",
+    "questions": [
+      {
+        "id": "OCC-01",
+        "text": "How are digital freight priorities owned, funded, and reviewed?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "There is no written digital roadmap; technology purchases respond to service failures without a named executive accountable for outcomes."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Functions set separate digital goals and review selected shipment KPIs about twice a year."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "A company-wide roadmap links investments to named shipment KPIs and executive owners, with quarterly reviews."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 governance is in place, and leadership reviews business-case outcomes and technology adoption monthly."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 governance is in place, and leadership uses explicit stop-or-scale criteria to reallocate pilot funding within the quarter."
+          }
+        ],
+        "evidence": "Roadmap, executive accountabilities, KPI dashboards, investment reviews, pilot funding decisions."
+      },
+      {
+        "id": "OCC-02",
+        "text": "How are dispatchers, drivers, ground staff, and other affected employees prepared for new digital tools?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "Tools are introduced with little planned training; support depends on a local champion."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Some sites provide training, while others rely on informal guidance without a common standard."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "All assessed sites follow role-based rollout and training plans, including AI literacy where relevant, with named operational owners."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 process is in place, and weekly usage or proficiency measures reveal adoption gaps that owners address and leadership reviews monthly."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 process is in place, and recurring frontline feedback and measured proficiency drive revisions to training and workflows, with successful practices scaled across sites."
+          }
+        ],
+        "evidence": "Role-based training records, weekly usage/proficiency measures, feedback and corrective actions."
+      },
+      {
+        "id": "OCC-03",
+        "text": "How are new digital ways of working sustained after a freight-technology pilot?",
+        "options": [
+          {
+            "value": 1,
+            "label": "Initial / Ad Hoc",
+            "text": "There is no assigned adoption owner or planned follow-up after launch."
+          },
+          {
+            "value": 2,
+            "label": "Developing / Reactive",
+            "text": "Local champions follow up on selected pilots, but sites use different success criteria and rollout methods."
+          },
+          {
+            "value": 3,
+            "label": "Defined / Repeatable",
+            "text": "Business and operations owners use a standard pilot-to-rollout process with documented responsibilities and adoption plans."
+          },
+          {
+            "value": 4,
+            "label": "Managed / Measured",
+            "text": "The Stage 3 process is in place, and monthly reviews compare adoption and shipment outcomes against the approved business case and assign corrective actions."
+          },
+          {
+            "value": 5,
+            "label": "Optimizing / Innovating",
+            "text": "The Stage 4 process is in place, and a standing pilot portfolio uses evidence-based stop-or-scale decisions, reusable rollout methods, and post-rollout checks that improvements persist."
+          }
+        ],
+        "evidence": "Adoption plans, review minutes, pilot criteria, rollout evidence, post-rollout checks."
+      }
+    ]
+  }
+];
+function renderQuestions(){
+ const root=document.getElementById('questions');root.replaceChildren();
+ dimensions.forEach((dim,di)=>{
+  const panel=document.createElement('section');panel.className='panel';
+  const head=document.createElement('div');head.className='dimension-head';
+  const title=document.createElement('h2');title.textContent=`${di+1}. ${dim.name}`;
+  const count=document.createElement('span');count.className='dim-count';count.textContent=`${dim.questions.length} questions`;
+  head.append(title,count);panel.append(head);
+  const desc=document.createElement('p');desc.className='desc';desc.textContent=dim.description;panel.append(desc);
+  dim.questions.forEach((q,qi)=>{
+   const wrap=document.createElement('div');wrap.className='question';
+   const field=document.createElement('fieldset');const legend=document.createElement('legend');legend.textContent=`${q.id}. ${q.text}`;field.append(legend);
+   q.options.forEach((opt,oi)=>{
+    const label=document.createElement('label');label.className='choice';
+    const input=document.createElement('input');input.type='radio';input.name=`${dim.id}_${qi}`;input.value=String(opt.value);input.required=true;
+    /* level number and label stay in the data but are hidden so respondents do not aim for the "best" answer */ const txt=document.createTextNode(opt.text);label.append(input,txt);field.append(label);
+   });wrap.append(field);const evidence=document.createElement('p');evidence.className='small';evidence.textContent=`Suggested evidence: ${q.evidence}`;wrap.append(evidence);panel.append(wrap);
+  });root.append(panel);
+ });
+}
+function calculate(){return dimensions.map(dim=>{
+ const values=dim.questions.map((q,i)=>Number(document.querySelector(`input[name="${dim.id}_${i}"]:checked`).value));
+ return {...dim,score:values.reduce((a,b)=>a+b,0)/values.length};
+});}
+/* ===== INTERPRETATION GUIDE DATA (Member A maintains this; names must match the guide exactly) ===== */
+const SETTINGS={lowMax:2.0, highMin:4.0, gap:1.0, channelsHigh:4.0, aiLow:2.0};
+/* Tie order for the lowest dimensions: shipment data first, because every other capability depends on it. */
+const TIE_PRIORITY=['sdi','foa','scc','occ','aim'];
+const PROFILES={
+ uniformLow:{name:"Uniformly low maturity",description:"Shipments are keyed by hand into separate systems and shared by phone, email or fax, so there is no system of record. Technology is bought after service failures, and no executive owns the fix.",action:"Assign one executive owner. Within 90 days, create one shipment ID across order entry, TMS and billing for the three highest-volume customers, and report their pickup and delivery times monthly from that record."},
+ uniformHigh:{name:"Uniformly high maturity",description:"Internal transformation is largely done: shipment data flows in real time and AI supports decisions from pickup to invoice. Further internal gains are shrinking, so the next frontier is new services built with customers.",action:"For one quarter, let the five largest customers test pricing and routing scenarios in the digital twin before they book. Compare their volume and revenue per shipment with similar customers who did not take part."},
+ dataGap:{name:"Shipment data infrastructure gap",description:"Portals, automation and AI sit on duplicated, siloed shipment data. Customers see conflicting quotes and delivery times, billing disputes rise, and users stop trusting AI tools and return to manual work.",action:"Name a shipment data owner. For two quarters, release no customer-facing or AI feature that does not use the single shipment ID. Track the duplicate-ID rate and scan-event completeness monthly until the dimension reaches Stage 3."},
+ digitalNotTransforming:{name:"Digitalized but not transforming",description:"Customers book, track and pay digitally, so rich shipment data is captured every day. Pricing, delivery times and capacity still rely on planner experience, so the data is stored rather than used.",action:"Within one quarter, put one model, such as delivery-time prediction or dynamic pricing for top customers, into daily use with a named product owner. Measure error or margin per shipment against lanes still planned and priced by hand."},
+ executionGap:{name:"Organizational execution gap",description:"The technology is in place, but people are not using it. Pilots succeed at one station and never spread, and training is left to each site. More technology spending will widen the gap.",action:"For one quarter, freeze new tool purchases. Give every live tool an executive owner and an adoption target, such as the share of drivers using the app daily. Review monthly and pair each rollout with AI literacy training."},
+ mixed:{name:'Mixed maturity profile',description:'Your scores do not match one of the five archetypal patterns, so the lowest dimensions are the binding constraints.',action:'Focus first on your two lowest dimensions and confirm the root causes before selecting an investment.'}
+};
+/* Rules are checked in order; the first match wins. Each uses dimension ids from `dimensions`. */
+const belowAllOthers=(s,id)=>Object.keys(s).every(k=>k===id||s[k]-s[id]>=SETTINGS.gap);
+const PROFILE_RULES=[
+ {profile:'uniformLow', test:s=>Object.values(s).every(v=>v<=SETTINGS.lowMax)},
+ {profile:'uniformHigh', test:s=>Object.values(s).every(v=>v>=SETTINGS.highMin)},
+ {profile:'dataGap', test:s=>belowAllOthers(s,'sdi')},
+ {profile:'digitalNotTransforming', test:s=>s.scc>=SETTINGS.channelsHigh && s.aim<=SETTINGS.aiLow},
+ {profile:'executionGap', test:s=>belowAllOthers(s,'occ')}
+];
+function interpret(rows){
+ const byId=Object.fromEntries(rows.map(r=>[r.id,r.score]));
+ const sorted=[...rows].sort((a,b)=>a.score-b.score || TIE_PRIORITY.indexOf(a.id)-TIE_PRIORITY.indexOf(b.id));
+ const low=sorted[0].score;const ties=sorted.filter(x=>Math.abs(x.score-low)<1e-9);
+ const rule=PROFILE_RULES.find(r=>r.test(byId));
+ const prof=PROFILES[rule?rule.profile:'mixed'];
+ return {name:prof.name,description:prof.description,action:prof.action,lowest:ties.map(r=>r.name).join(', '),two:sorted.slice(0,2).map(r=>`${r.name} (${r.score.toFixed(2)})`).join(' and '),ties:ties.length};
+}
+let chart;
+function showResults(rows){
+ const grid=document.getElementById('score-grid');grid.replaceChildren();
+ rows.forEach(r=>{const box=document.createElement('div');box.className='score';const title=document.createElement('strong');title.textContent=r.name;const val=document.createElement('b');val.textContent=`${r.score.toFixed(2)} / 5`;box.append(title,val);grid.append(box);});
+ const result=interpret(rows),out=document.getElementById('interpretation');out.replaceChildren();
+ const heading=document.createElement('h3');heading.textContent=result.name;out.append(heading);
+ if(result.description){const pd=document.createElement('p');pd.textContent=result.description;out.append(pd);}
+ const p1=document.createElement('p');p1.textContent=`Two lowest-scoring dimensions: ${result.two}.`;out.append(p1);
+ if(result.ties>2){const p=document.createElement('p');p.textContent=`Tied for the lowest score: ${result.lowest}. Ties are ordered by how foundational each capability is, starting with shipment data.`;out.append(p);}
+ const p2=document.createElement('p');p2.textContent=`Recommended next action: ${result.action}`;out.append(p2);
+ const section=document.getElementById('results');section.hidden=false;
+ if(chart)chart.destroy();
+ const canvas=document.getElementById('radar');
+ if(typeof Chart==='undefined'){
+  const p=document.createElement('p');p.className='error';p.textContent='Chart.js could not load. Check your internet connection; numerical results are still available.';canvas.replaceWith(p);return;
+ }
+ chart=new Chart(canvas,{type:'radar',data:{labels:rows.map(r=>r.name),datasets:[{label:'Maturity score',data:rows.map(r=>r.score),borderColor:'#205c9b',backgroundColor:'rgba(32,92,155,.17)',pointBackgroundColor:'#205c9b',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:true,layout:{padding:24},scales:{r:{min:0,max:5,ticks:{stepSize:1},pointLabels:{font:{size:12},callback:l=>{const w=l.split(' ');if(w.length<3)return l;const m=Math.ceil(w.length/2);return [w.slice(0,m).join(' '),w.slice(m).join(' ')];}}}},plugins:{legend:{display:false}}}});
+ section.scrollIntoView({behavior:'smooth',block:'start'});
+}
+document.getElementById('assessment').addEventListener('submit',e=>{
+ e.preventDefault();const missing=[...document.querySelectorAll('.question fieldset')].filter(fs=>!fs.querySelector('input:checked'));
+ const err=document.getElementById('error');
+ if(missing.length){err.textContent=`Please answer all questions (${missing.length} remaining).`;missing[0].scrollIntoView({behavior:'smooth',block:'center'});return;}
+ err.textContent='';showResults(calculate());
+});
+document.getElementById('clearBtn').addEventListener('click',()=>{document.getElementById('assessment').reset();document.getElementById('results').hidden=true;document.getElementById('error').textContent='';window.scrollTo({top:0,behavior:'smooth'});});
+renderQuestions();
+</script>
+</body></html>
